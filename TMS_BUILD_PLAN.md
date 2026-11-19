@@ -21,6 +21,14 @@ This project is an airfreight forwarder TMS, based on the required parties, airp
 | Cloud | Microsoft Azure, using managed services and Infrastructure as Code |
 | Offline operation | Excluded from Release 1. Offline desktop use requires a separately designed synchronization and conflict-resolution capability. |
 
+### Product goal and first measurable milestone
+
+**Product goal:** deliver a secure airfreight-forwarding TMS that lets a forwarding team manage approved operational data, create and track shipments, issue and correct HAWBs/MAWBs, and exchange shipment data with at least one onboarded air-cargo partner. Tenant and branch access, approvals, and audit history apply across the workflow.
+
+**First milestone (M1): secure shipment draft vertical slice.** A manager can approve the party data an operator needs; an authorized operator can create and validate a straight-shipment draft from that data; the API enforces role, tenant, and branch access; and the actions appear in an audit history. The team can run and demonstrate this flow locally or in a development environment.
+
+M1 is reached when the workflow and role matrix are reviewed, the protected API and persistence boundaries reject cross-tenant access, the manager approval and operator draft flow work end to end, and the repeatable setup and acceptance checks are documented. The GitHub milestone tracks issues #1, #3, #4, and #5. Issue #2 (partner contract discovery) proceeds in parallel and gates the later e-AWB integration milestone. No due date is set until the two developers estimate the work and confirm access to an operations reviewer and partner materials.
+
 Microsoft currently lists .NET 10 as LTS and .NET 11 as STS, both supported through November 14, 2028. This baseline selects .NET 10 for its LTS release track; pin a current patch and schedule framework upgrades before end of support. [Microsoft .NET support policy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core)
 
 ## 2. Scope and operating assumptions

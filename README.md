@@ -2,6 +2,10 @@
 
 Multi-tenant airfreight-forwarding TMS. The product and architecture decisions are in [TMS_BUILD_PLAN.md](TMS_BUILD_PLAN.md).
 
+## Current goal
+
+The first milestone is a secure shipment-draft vertical slice: a manager approves party data, an authorized operator creates and validates a straight-shipment draft, tenant/branch permissions are enforced by the API, and the actions are auditable. Track progress in the GitHub milestone **M1: Secure shipment draft vertical slice**. The full product outcome and milestone exit criteria are in the build plan.
+
 ## Repository layout
 
 ```text
