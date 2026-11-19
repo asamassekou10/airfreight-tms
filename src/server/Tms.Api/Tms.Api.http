@@ -1,0 +1,10 @@
+@Tms.Api_HostAddress = http://localhost:5080
+
+### Liveness
+GET {{Tms.Api_HostAddress}}/health/live
+
+### Database readiness
+GET {{Tms.Api_HostAddress}}/health/ready
+
+### OpenAPI document (Development only)
+GET {{Tms.Api_HostAddress}}/openapi/v1.json

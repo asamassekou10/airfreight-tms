@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: tms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tms_dev
+      POSTGRES_USER: tms_dev
+      POSTGRES_PASSWORD: tms_dev_only
+    ports:
+      - "5432:5432"
+    volumes:
+      - tms-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tms_dev -d tms_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  tms-postgres-data:

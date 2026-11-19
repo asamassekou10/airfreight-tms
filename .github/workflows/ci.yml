@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet-build:
+    name: .NET build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore Tms.sln
+      - run: dotnet build Tms.sln --no-restore --configuration Release
+
+  web-build:
+    name: Web build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+      - run: npm ci
+      - run: npm run build

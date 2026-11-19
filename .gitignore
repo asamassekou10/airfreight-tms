@@ -1,0 +1,28 @@
+# Build outputs
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/coverage/
+**/.vite/
+
+# Local settings and credentials
+.env
+.env.*
+!.env.example
+**/appsettings.Local.json
+**/secrets.json
+**/.secret/
+
+# IDE and OS files
+.DS_Store
+.idea/
+.vscode/
+.vs/
+*.user
+*.suo
+
+# Local databases and logs
+*.db
+*.sqlite
+*.log
