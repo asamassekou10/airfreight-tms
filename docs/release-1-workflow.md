@@ -51,6 +51,28 @@ Confirm role combinations, who may grant Admin, how manager delegation works, wh
 
 M1 ends at draft validation. Booking, consolidation, AWB issuance, partner exchange, delivery, and finance follow in later slices. Native desktop, customs filing, and general ledger are outside Release 1.
 
+## Concrete M1 review scenario
+
+Use synthetic data throughout. Demo Forwarding has two branches, Chicago and Dallas. A Chicago operator and a Chicago manager each have access only to Chicago. Another forwarding company has its own operator and manager. The sample shipment is a straight shipment from ORD to FRA with two cartons of printed brochures at 24 kg total gross weight.
+
+| Step | Action | Expected result |
+| --- | --- | --- |
+| 1 | Chicago operator requests the missing consignee, Demo Receiving GmbH. | The request is pending and the consignee is unavailable for shipment validation. |
+| 2 | The operator attempts to approve the request. | The API denies approval and the request remains pending. |
+| 3 | The Chicago manager approves the request with a reason. | An approved consignee becomes selectable and the approval is recorded in the audit history. |
+| 4 | The Chicago operator saves the draft with the approved consignee but leaves gross weight blank, then submits it for validation. | The draft saves. Validation identifies the missing gross weight and the shipment remains Draft. |
+| 5 | The operator adds 24 kg and submits again with all other required fields present. | The shipment advances to Validated and the transition is recorded in the audit history. |
+| 6 | A Dallas-only user or a user from the other tenant attempts to read or validate the Chicago shipment. | The API denies access, exposes no shipment data, and leaves the record unchanged. |
+
+### Decisions to record during the walkthrough
+
+| Topic | Proposal for review |
+| --- | --- |
+| Required fields | Confirm whether customer, shipper, consignee, origin and destination airports, piece count, gross weight, goods description, and Incoterm with named place are sufficient for M1. Decide when a notify party is mandatory. |
+| Party approval scope | Decide whether the Chicago manager may approve a request that creates a party usable by Dallas. If approval is tenant-wide, define the grant that authorizes it. |
+| Role combinations | Decide whether the same membership can act as both Operator and Manager, and whether the requester may approve their own request regardless of assigned roles. |
+| Audit review | Confirm who can see party approval and draft validation events, and whether audit visibility follows branch scope, tenant scope, or both depending on the event. |
+
 ## Review before implementation
 
 - Operations reviewer: Confirm required fields, booking and AWB ordering, cancellation rules, milestone evidence, and what billing tracks per house versus per consolidation.
