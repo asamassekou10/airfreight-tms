@@ -73,6 +73,21 @@ Use synthetic data throughout. Demo Forwarding has two branches, Chicago and Dal
 | Role combinations | Decide whether the same membership can act as both Operator and Manager, and whether the requester may approve their own request regardless of assigned roles. |
 | Audit review | Confirm who can see party approval and draft validation events, and whether audit visibility follows branch scope, tenant scope, or both depending on the event. |
 
+## Implementation criteria for the shipment draft
+
+These criteria elaborate [issue #5](https://github.com/asamassekou10/airfreight-tms/issues/5). The exact required fields and role grants remain subject to the decisions above.
+
+| Case | Expected API behavior |
+| --- | --- |
+| Save an incomplete draft | Persist supplied fields and keep the shipment in Draft. Reject malformed values and invalid references during the save. |
+| Validate an incomplete draft | Return field-level errors and leave the state and version unchanged. |
+| Validate with an ineligible party | Reject validation if a selected party is missing, unapproved, archived, outside the tenant, or lacks the required role. Apply the same checks when validating a previously saved reference. |
+| Validate a complete draft | Persist the Validated state and its audit event in one transaction. The event records actor, shipment, branch, timestamp, and the state transition. |
+| Save or validate an outdated version | Reject the request as a conflict. Preserve the current data and let the client reload before retrying. |
+| List, read, edit, or validate outside authorized scope | Apply tenant and branch scope to each operation. Exclude inaccessible rows from lists and avoid disclosing record details through errors. |
+
+For the first demonstration, show only the actions needed to find approved parties, save a draft, correct validation errors, and confirm the resulting status and audit record. Use the authorization foundation from issue #3 and approved party records from issue #4.
+
 ## Review before implementation
 
 - Operations reviewer: Confirm required fields, booking and AWB ordering, cancellation rules, milestone evidence, and what billing tracks per house versus per consolidation.
