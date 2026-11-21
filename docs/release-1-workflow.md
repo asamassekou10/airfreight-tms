@@ -88,6 +88,22 @@ These criteria elaborate [issue #5](https://github.com/asamassekou10/airfreight-
 
 For the first demonstration, show only the actions needed to find approved parties, save a draft, correct validation errors, and confirm the resulting status and audit record. Use the authorization foundation from issue #3 and approved party records from issue #4.
 
+## Implementation criteria for party approval
+
+These proposed criteria elaborate [issue #4](https://github.com/asamassekou10/airfreight-tms/issues/4). The first demonstration covers a request for a missing consignee.
+
+| Case | Expected API behavior |
+| --- | --- |
+| Submit a new or changed party request | Save a Pending request with its requester and scope. A pending change does not alter an existing approved party. |
+| Review potential duplicates | Surface eligible matches within the reviewer's authorized scope. Allow the reviewer to use an eligible existing party or approve a new one with a reason. Avoid treating name similarity alone as proof of duplication. |
+| Approve a pending request | Verify permission and request scope. Save the decision, reason, resulting party reference, and audit event in one transaction. Only an active party with the required role becomes selectable. |
+| Reject a pending request | Record the reviewer and reason in the decision and audit history. Leave existing party records untouched. |
+| Two reviewers decide the same request | Accept only one decision. Return a conflict to the second reviewer and preserve the first decision and its effects. |
+| Archive an approved party | Remove it from new selections and reject it on subsequent draft validation. Preserve historical references and issued document snapshots. |
+| Access a request or party outside authorized scope | Exclude it from search and reject direct reads and writes without exposing record details. |
+
+Request state and party eligibility are separate. Proposed request states are Pending, Approved, and Rejected. Record the policy for self-approval and tenant-wide party changes before implementing grants. Approval and archive operations depend on the authorization foundation in issue #3.
+
 ## Review before implementation
 
 - Operations reviewer: Confirm required fields, booking and AWB ordering, cancellation rules, milestone evidence, and what billing tracks per house versus per consolidation.
