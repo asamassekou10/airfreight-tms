@@ -6,11 +6,18 @@ public sealed record AccessibleBranch(Guid Id, string Code, string Name);
 
 public sealed class BranchAccessReader(TmsDbContext db)
 {
-    public Task<AccessibleBranch?> FindAsync(
+    public async Task<AccessibleBranch?> FindAsync(
         string issuer, string subject, Guid tenantId, Guid branchId,
         CancellationToken cancellationToken)
     {
-        return db.Database.SqlQuery<AccessibleBranch>($"""
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+            SELECT set_config('tms.tenant_id', {tenantId.ToString("D")}, true),
+                   set_config('tms.identity_issuer', {issuer}, true),
+                   set_config('tms.identity_subject', {subject}, true)
+            """, cancellationToken);
+
+        var branch = await db.Database.SqlQuery<AccessibleBranch>($"""
             SELECT b.id AS "Id", b.code AS "Code", b.name AS "Name"
             FROM branches b
             JOIN tenants t ON t.id = b.tenant_id
@@ -34,5 +41,7 @@ public sealed class BranchAccessReader(TmsDbContext db)
                     ))
               )
             """).SingleOrDefaultAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return branch;
     }
 }
