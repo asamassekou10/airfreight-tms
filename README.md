@@ -82,6 +82,8 @@ An active membership can read an active branch in its tenant through an explicit
 2. Configure the authority and audience of a development identity provider. In the fixture database, update the demo user's `identity_issuer` and `identity_subject` to match the `iss` and `sub` of a test user's API access token.
 3. Call the branch endpoint with the test bearer token. Use the tenant and branch IDs from the fixture. Expect Chicago to return 200, Dallas to return 404 for the same tenant, and Frankfurt to return 404 even with its correct tenant ID. The configured endpoint should return 401 without a token.
 
+To check the PostgreSQL lookup directly, load a fresh fixture and run `dotnet run --project tests/Tms.BranchAccess.Checks` with `TMS_BRANCH_FIXTURE_CONNECTION` set to its connection string. The check uses the original synthetic identity and rolls back its data changes.
+
 This repository has the solution structure, local PostgreSQL setup, health endpoints, OpenAPI, and a minimal web shell. Authentication, tenant enforcement, domain entities, migrations, partner integrations, and business workflows are not implemented yet. The first implementation slice should establish tenant-aware persistence and backend authorization before exposing operational write endpoints.
 
 Never place real credentials, customer data, partner payloads, or production connection strings in the repository. Production secrets belong in Azure Key Vault and are supplied through managed identity and environment configuration.
