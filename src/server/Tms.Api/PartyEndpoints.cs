@@ -71,7 +71,7 @@ internal static class PartyEndpoints
         return ToResult(await store.DecideAsync(scope, requestId, reason, approve, ct), Results.NoContent());
     }
 
-    private static RequestScope? GetScope(Guid tenantId, Guid branchId, ClaimsPrincipal user)
+    internal static RequestScope? GetScope(Guid tenantId, Guid branchId, ClaimsPrincipal user)
     {
         var issuer = user.FindFirstValue("iss");
         var subject = user.FindFirstValue("sub");

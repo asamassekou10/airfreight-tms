@@ -59,6 +59,7 @@ if (branchLookupEnabled)
     app.MapGet("/api/tenants/{tenantId:guid}/branches/{branchId:guid}", ReadBranchAsync)
         .RequireAuthorization();
     app.MapPartyEndpoints();
+    app.MapShipmentEndpoints();
 }
 
 app.Run();

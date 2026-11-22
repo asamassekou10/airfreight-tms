@@ -100,6 +100,43 @@ internal static class BranchHttpChecks
         using var deniedAudit = await SendAsync(HttpMethod.Get, $"{partyPath}/audit-events", validToken);
         Expect(deniedAudit, HttpStatusCode.Forbidden, "operator audit access denied");
 
+        using var draftResponse = await SendAsync(HttpMethod.Post, $"{partyPath}/shipments", validToken,
+            new { consigneeId = party.Id, origin = "ORD", destination = "FRA" });
+        Expect(draftResponse, HttpStatusCode.Created, "operator saves incomplete shipment");
+        var draft = await draftResponse.Content.ReadFromJsonAsync<ShipmentResult>()
+            ?? throw new InvalidOperationException("Expected a shipment draft.");
+        var shipmentPath = $"{partyPath}/shipments/{draft.Id}";
+        using var invalid = await SendAsync(HttpMethod.Post, $"{shipmentPath}/validate", validToken,
+            new { version = draft.Version });
+        Expect(invalid, HttpStatusCode.BadRequest, "missing weight blocks validation");
+        using var edited = await SendAsync(HttpMethod.Put, shipmentPath, validToken,
+            new { consigneeId = party.Id, origin = "ORD", destination = "FRA", grossWeightKg = 24, version = draft.Version });
+        Expect(edited, HttpStatusCode.OK, "operator corrects shipment");
+        using var stale = await SendAsync(HttpMethod.Post, $"{shipmentPath}/validate", validToken,
+            new { version = draft.Version });
+        Expect(stale, HttpStatusCode.Conflict, "stale shipment version denied");
+        using var validated = await SendAsync(HttpMethod.Post, $"{shipmentPath}/validate", validToken,
+            new { version = draft.Version + 1 });
+        Expect(validated, HttpStatusCode.OK, "corrected shipment validates");
+        var result = await validated.Content.ReadFromJsonAsync<ShipmentResult>();
+        if (result?.Status != "validated")
+            throw new InvalidOperationException("Expected the shipment to be validated.");
+        var validationCount = await db.Database.SqlQuery<int>($"""
+            SELECT count(*)::int AS "Value" FROM audit_events
+            WHERE entity_id = {draft.Id} AND action = 'shipment.validated'
+            """).SingleAsync();
+        if (validationCount != 1)
+            throw new InvalidOperationException("Expected exactly one shipment validation audit event.");
+        Console.WriteLine("PASS shipment validation audit event");
+        using var listed = await SendAsync(HttpMethod.Get, $"{partyPath}/shipments", validToken);
+        Expect(listed, HttpStatusCode.OK, "operator lists branch shipments");
+        using var siblingList = await SendAsync(HttpMethod.Get,
+            $"/api/tenants/{tenant}/branches/{dallas}/shipments", validToken);
+        Expect(siblingList, HttpStatusCode.NotFound, "cross-branch shipment list denied");
+        using var otherTenantList = await SendAsync(HttpMethod.Get,
+            $"/api/tenants/{otherTenant}/branches/{frankfurt}/shipments", validToken);
+        Expect(otherTenantList, HttpStatusCode.NotFound, "cross-tenant shipment list denied");
+
         async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, string token, object? body = null)
         {
             using var request = new HttpRequestMessage(method, url);
@@ -142,4 +179,6 @@ internal static class BranchHttpChecks
             Console.WriteLine($"PASS HTTP {scenario}");
         }
     }
+
+    private sealed record ShipmentResult(Guid Id, int Version, string Status);
 }

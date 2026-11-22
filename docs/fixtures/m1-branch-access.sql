@@ -4,6 +4,7 @@
 \ir ../../db/migrations/0001_branch_access.sql
 \ir ../../db/migrations/0002_m1_reference_catalogs.sql
 \ir ../../db/migrations/0003_m1_party_approval.sql
+\ir ../../db/migrations/0004_m1_shipments.sql
 BEGIN;
 
 INSERT INTO tenants (id, name) VALUES

@@ -92,6 +92,8 @@ This repository has the solution structure, local PostgreSQL setup, health endpo
 
 Never place real credentials, customer data, partner payloads, or production connection strings in the repository. Production secrets belong in Azure Key Vault and are supplied through managed identity and environment configuration.
 
+The shipment API uses the same branch prefix. List or create drafts at `/shipments`, update them at `PUT /shipments/{id}`, and validate with `POST /shipments/{id}/validate`. This first straight-shipment demo validates an approved consignee, distinct origin and destination airports, and positive gross weight. Edits and validation require the current version from the preceding response.
+
 ## Team workflow
 
 - Branch from `main` using `feature/<short-name>` or `fix/<short-name>`.
