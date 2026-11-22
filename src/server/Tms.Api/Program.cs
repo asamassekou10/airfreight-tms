@@ -1,10 +1,27 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using Tms.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+var authority = builder.Configuration["Authentication:Authority"];
+var audience = builder.Configuration["Authentication:Audience"];
+var branchLookupEnabled = !string.IsNullOrWhiteSpace(authority) && !string.IsNullOrWhiteSpace(audience);
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = authority;
+        options.Audience = audience;
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters.ValidateIssuer = true;
+        options.TokenValidationParameters.ValidateAudience = true;
+        options.TokenValidationParameters.ValidateLifetime = true;
+    });
+builder.Services.AddAuthorization();
+builder.Services.AddScoped<BranchAccessReader>();
 
 var connectionString = builder.Configuration.GetConnectionString("Tms");
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -35,6 +52,27 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready")
 });
 
+if (branchLookupEnabled)
+{
+    app.MapGet("/api/tenants/{tenantId:guid}/branches/{branchId:guid}", ReadBranchAsync)
+        .RequireAuthorization();
+}
+
 app.Run();
+
+static async Task<IResult> ReadBranchAsync(
+    Guid tenantId, Guid branchId, ClaimsPrincipal user, BranchAccessReader reader,
+    CancellationToken cancellationToken)
+{
+    var issuer = user.FindFirstValue("iss");
+    var subject = user.FindFirstValue("sub");
+    if (string.IsNullOrWhiteSpace(issuer) || string.IsNullOrWhiteSpace(subject))
+    {
+        return Results.Unauthorized();
+    }
+
+    var branch = await reader.FindAsync(issuer, subject, tenantId, branchId, cancellationToken);
+    return branch is null ? Results.NotFound() : Results.Ok(branch);
+}
 
 public partial class Program { }

@@ -1,0 +1,14 @@
+# M1 implementation plan
+
+The milestone is complete when a manager approves a missing consignee, an operator validates a straight shipment using that consignee, both changes appear in audit history, and the API and database reject access outside the caller's scope. Use synthetic data for the demo.
+
+| Order | Work | Suggested ownership | Evidence for review |
+| --- | --- | --- | --- |
+| 1 | Review issue #1 and PR #6 alongside the tenancy diagram. Agree on role cardinality, branch grants, party approval scope and self-approval, audit visibility, and minimum shipment fields. | Both developers and an operations reviewer | Decisions are recorded and the Chicago shipment walkthrough is reviewed. |
+| 2 | Finish issue #3. Add production migrations, configure the development identity provider, resolve active membership from validated issuer and subject, and apply resource permissions. Separate migration and runtime database roles. Set tenant context per transaction and enforce row-level security on tenant-owned data. Design membership resolution explicitly because it happens before tenant context exists. | Backend developer, with the other developer reviewing access rules | A clean database migrates successfully. Tests cover allowed access, missing credentials, wrong tenant, wrong branch, disabled membership, and context isolation across reused connections. |
+| 3 | Seed the minimal airport, country, and Incoterm references for issue #10. Prepare React screens for the demo against agreed request and response examples. | Second developer, in parallel with issue #3 | Repeatable synthetic seed and screens that show pending approval, draft state, and validation errors. |
+| 4 | Deliver issue #4, starting with a missing consignee. Save the approval decision, resulting party, and audit event atomically. | Backend and frontend pair | An operator requests a party, an authorized manager approves it, and the party becomes selectable. Duplicate decisions and unauthorized approval are denied. |
+| 5 | Deliver issue #5. Save incomplete drafts, validate eligible parties and required fields, reject stale edits, and commit the validation event with the state transition. | Backend and frontend pair | A missing gross weight leaves the shipment in Draft. Correcting it moves the shipment to Validated and records the transition. |
+| 6 | Run the complete demo from a disposable database and repeat access checks with two tenants and two branches. Capture repeatable setup steps and have both developers review the result. | Both developers | Builds pass, API and database checks pass, and a teammate can reproduce the demo. |
+
+The existing branch lookup is the starting point for step 2. Its SQL fixture supplies synthetic data for local review. The production migration, configured identity provider, role policies, and database enforcement are still required. Keep partner discovery in issue #2 moving independently of the shipment demo.
