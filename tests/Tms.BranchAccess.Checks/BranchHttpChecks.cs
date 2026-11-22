@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,12 +47,80 @@ internal static class BranchHttpChecks
         await CheckAsync("sibling branch", tenant, dallas, validToken, HttpStatusCode.NotFound);
         await CheckAsync("other tenant", otherTenant, frankfurt, validToken, HttpStatusCode.NotFound);
 
-        string Token(SecurityKey key, string tokenAudience) => new JsonWebTokenHandler().CreateToken(
+        var managerToken = Token(signingKey, audience, "demo-manager");
+        var partyPath = $"/api/tenants/{tenant}/branches/{chicago}";
+        var consigneeName = $"Demo consignee {Guid.NewGuid():N}";
+        using var created = await SendAsync(HttpMethod.Post, $"{partyPath}/party-requests", validToken,
+            new { name = consigneeName });
+        Expect(created, HttpStatusCode.Created, "operator requests consignee");
+        var party = await created.Content.ReadFromJsonAsync<Tms.Infrastructure.Data.PartyRequest>()
+            ?? throw new InvalidOperationException("Expected the created request.");
+        var decisionUrl = $"{partyPath}/party-requests/{party.Id}/approve";
+        using var forbidden = await SendAsync(HttpMethod.Post, decisionUrl, validToken, new { reason = "Reviewed" });
+        Expect(forbidden, HttpStatusCode.Forbidden, "operator approval denied");
+        using var approved = await SendAsync(HttpMethod.Post, decisionUrl, managerToken, new { reason = "Reviewed" });
+        Expect(approved, HttpStatusCode.NoContent, "manager approves consignee");
+        using var repeated = await SendAsync(HttpMethod.Post, decisionUrl, managerToken, new { reason = "Repeated" });
+        Expect(repeated, HttpStatusCode.Conflict, "repeat approval denied");
+        using var consignees = await SendAsync(HttpMethod.Get, $"{partyPath}/consignees", validToken);
+        Expect(consignees, HttpStatusCode.OK, "operator lists approved consignees");
+        var items = await consignees.Content.ReadFromJsonAsync<Tms.Infrastructure.Data.Consignee[]>();
+        if (items is null || !items.Any(item => item.Id == party.Id && item.Name == consigneeName))
+            throw new InvalidOperationException("Approved consignee is missing from the list.");
+
+        var options = new DbContextOptionsBuilder<Tms.Infrastructure.Data.TmsDbContext>()
+            .UseNpgsql(connectionString).Options;
+        await using var db = new Tms.Infrastructure.Data.TmsDbContext(options);
+        var managerScope = new Tms.Infrastructure.Data.RequestScope(tenant, chicago, issuer, "demo-manager");
+        await using var auditTransaction = await managerScope.BeginAsync(db, CancellationToken.None);
+        var actions = await db.Database.SqlQuery<string>($"""
+            SELECT action AS "Value" FROM audit_events
+            WHERE entity_id = {party.Id} AND tenant_id = {tenant} AND branch_id = {chicago}
+            """).ToListAsync();
+        if (actions.Count != 2 || !actions.Contains("party.requested") || !actions.Contains("party.approved"))
+            throw new InvalidOperationException("Expected exactly one request and one approval audit event.");
+        Console.WriteLine("PASS party request and approval audit events");
+
+        using var secondRequest = await SendAsync(HttpMethod.Post, $"{partyPath}/party-requests", validToken,
+            new { name = $"Rejected consignee {Guid.NewGuid():N}" });
+        Expect(secondRequest, HttpStatusCode.Created, "operator requests another consignee");
+        var second = await secondRequest.Content.ReadFromJsonAsync<Tms.Infrastructure.Data.PartyRequest>()
+            ?? throw new InvalidOperationException("Expected the second request.");
+        using var rejected = await SendAsync(HttpMethod.Post, $"{partyPath}/party-requests/{second.Id}/reject",
+            managerToken, new { reason = "Missing documentation" });
+        Expect(rejected, HttpStatusCode.NoContent, "manager rejects consignee");
+        var rejection = await db.Database.SqlQuery<string>($"""
+            SELECT reason AS "Value" FROM audit_events
+            WHERE entity_id = {second.Id} AND action = 'party.rejected'
+            """).SingleAsync();
+        if (rejection != "Missing documentation")
+            throw new InvalidOperationException("Expected rejection reason in audit history.");
+        using var audit = await SendAsync(HttpMethod.Get, $"{partyPath}/audit-events", managerToken);
+        Expect(audit, HttpStatusCode.OK, "manager reads branch audit");
+        using var deniedAudit = await SendAsync(HttpMethod.Get, $"{partyPath}/audit-events", validToken);
+        Expect(deniedAudit, HttpStatusCode.Forbidden, "operator audit access denied");
+
+        async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, string token, object? body = null)
+        {
+            using var request = new HttpRequestMessage(method, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            if (body is not null) request.Content = JsonContent.Create(body);
+            return await client.SendAsync(request);
+        }
+
+        static void Expect(HttpResponseMessage response, HttpStatusCode status, string scenario)
+        {
+            if (response.StatusCode != status)
+                throw new InvalidOperationException($"{scenario}: expected {status}, got {response.StatusCode}.");
+            Console.WriteLine($"PASS HTTP {scenario}");
+        }
+
+        string Token(SecurityKey key, string tokenAudience, string subject = "demo-operator") => new JsonWebTokenHandler().CreateToken(
             new SecurityTokenDescriptor
             {
                 Issuer = issuer,
                 Audience = tokenAudience,
-                Subject = new ClaimsIdentity([new Claim("sub", "demo-operator")]),
+                Subject = new ClaimsIdentity([new Claim("sub", subject)]),
                 Expires = DateTime.UtcNow.AddMinutes(5),
                 SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.RsaSha256)
             });

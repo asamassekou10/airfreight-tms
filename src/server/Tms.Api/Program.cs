@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Tms.Infrastructure.Data;
+using Tms.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<BranchAccessReader>();
+builder.Services.AddScoped<PartyApprovalStore>();
 
 var connectionString = builder.Configuration.GetConnectionString("Tms");
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -56,6 +58,7 @@ if (branchLookupEnabled)
 {
     app.MapGet("/api/tenants/{tenantId:guid}/branches/{branchId:guid}", ReadBranchAsync)
         .RequireAuthorization();
+    app.MapPartyEndpoints();
 }
 
 app.Run();

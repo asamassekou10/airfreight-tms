@@ -86,6 +86,8 @@ To check the PostgreSQL lookup and HTTP endpoint, load a fresh fixture and run `
 
 For a database without demo data, apply the SQL files in [db/migrations](db/migrations) in numeric order as the schema owner, passing `-v runtime_role=<runtime-login>` to each `psql` invocation. The runtime login must have no membership in the owner role and no `BYPASSRLS` privilege. The API supplies verified identity and the requested tenant as transaction settings. PostgreSQL checks active membership and branch access before returning rows. Only the API should hold the runtime login.
 
+The consignee approval slice uses the same branch route prefix. Operators create requests with `POST /party-requests` and a JSON `name`. Managers use `POST /party-requests/{requestId}/approve` or `/reject` with a JSON `reason`. `GET /consignees` lists approved records for the branch, and managers can read the latest branch events with `GET /audit-events`. The HTTP checks use separate synthetic operator and manager identities to exercise these actions.
+
 This repository has the solution structure, local PostgreSQL setup, health endpoints, OpenAPI, and a minimal web shell. Authentication, tenant enforcement, domain entities, migrations, partner integrations, and business workflows are not implemented yet. The first implementation slice should establish tenant-aware persistence and backend authorization before exposing operational write endpoints.
 
 Never place real credentials, customer data, partner payloads, or production connection strings in the repository. Production secrets belong in Azure Key Vault and are supplied through managed identity and environment configuration.
