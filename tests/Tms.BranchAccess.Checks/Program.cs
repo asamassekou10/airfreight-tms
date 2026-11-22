@@ -25,6 +25,7 @@ await CheckAsync("all branches does not cross tenants", otherTenant, frankfurt, 
 await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE memberships SET is_active = false WHERE tenant_id = {tenant}");
 await CheckAsync("inactive membership", tenant, chicago, null);
 await transaction.RollbackAsync();
+await BranchHttpChecks.RunAsync(connectionString, issuer, tenant, otherTenant, chicago, dallas, frankfurt);
 
 async Task CheckAsync(string scenario, Guid tenantId, Guid branchId, string? expectedCode,
     string tokenIssuer = issuer)

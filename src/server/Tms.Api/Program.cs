@@ -75,4 +75,7 @@ static async Task<IResult> ReadBranchAsync(
     return branch is null ? Results.NotFound() : Results.Ok(branch);
 }
 
-public partial class Program { }
+namespace Tms.Api
+{
+    public sealed class ApiAssemblyMarker { }
+}
